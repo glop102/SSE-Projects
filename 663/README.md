@@ -4,8 +4,8 @@
 
 Learning the basics of multi-process processing
 
-- [Project 1 - C Memory System](Project 1)
+- [Project 1 - C Memory System](Project%201)
 
-- [Project 2 - Basic - MPI, OpenMP, PThreads](Project 2)
+- [Project 2 - Basic - MPI, OpenMP, PThreads](Project%202)
 
-- [Project 3 - Advanced Stuff (tbd)](Project 3)
+- [Project 3 - Advanced Stuff (tbd)](Project%203)
