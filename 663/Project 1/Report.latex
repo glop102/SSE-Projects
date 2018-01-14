@@ -1,0 +1,76 @@
+\documentclass[12pt]{article}
+
+\usepackage{hyperref}
+
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+
+\usepackage{minted}
+\setminted[c++]{frame=single,linenos=true,autogobble=true,numbersep=4pt,tabsize=4}
+
+
+\begin{document}
+\pagenumbering{gobble}
+\begin{titlepage}
+	\centering
+	{\Huge C/C++ Memory Model and Interactions\par}
+	\vspace{0.25in}
+	{\Large Project 1\par}
+	\vspace{2in}
+	{Alex Harper\par}
+	\newpage
+\end{titlepage}
+\pagenumbering{roman}
+
+\tableofcontents
+\newpage
+
+\listoffigures
+\newpage
+
+\pagenumbering{arabic}
+
+% \phantomsection
+% \addcontentsline{toc}{section}{Introduction}
+% \section*{Introduction}
+\section{Introduction}
+
+Hello World! This is a bit of text.
+
+\begin{figure}[hb]
+	\begin{minted}{c++}
+		#include <stdio.h>
+
+		int main(){
+			//Comment
+			printf("Hello World\n");
+			return 0;
+		}
+	\end{minted}
+	\vspace{-20pt}
+	\caption{Basic Code Example}
+	\label{first_example}
+\end{figure}
+
+As you can see above, the package does a nice job.
+
+
+\begin{figure}[hb]
+	\begin{minted}[highlightlines=5]{c++}
+		#include <stdio.h>
+
+		int main(){
+			//Comment
+			printf("Hello World\n");
+			return 0;
+		}
+	\end{minted}
+	\vspace{-20pt}
+	\caption{Adding extra options}
+	\label{second_example}
+\end{figure}
+
+Above is an example of the code highlighting.
+
+
+\end{document}

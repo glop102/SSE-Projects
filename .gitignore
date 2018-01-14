@@ -1,3 +1,8 @@
 **/*.aux
 **/*.log
+**/*.lof
+**/*.toc
+**/*.out
 **/a.out
+**/_minted-*/**
+**/*.pdf
