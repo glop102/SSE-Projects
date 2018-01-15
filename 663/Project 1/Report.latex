@@ -1,6 +1,7 @@
 \documentclass[12pt]{article}
 
 \usepackage{hyperref}
+\usepackage{caption}
 
 \usepackage{graphicx}
 \graphicspath{ {images/} }
@@ -26,6 +27,7 @@
 \newpage
 
 \listoffigures
+% \listoftables
 \newpage
 
 \pagenumbering{arabic}
@@ -35,42 +37,233 @@
 % \section*{Introduction}
 \section{Introduction}
 
-Hello World! This is a bit of text.
+The assignment of this project was to learn how C works with memory on computers.
+I have been coding in C++ for a long time and, mostly out of interest, done a lot of reading into how other projects and languages do things.
+C keept things simple, and C++ inherited that simplicity but tried to change the paradim.
+I go through the basic ideas and usages of C style memory managment first, and then talk about how C++ does similar thigns but compatable with objects.
+
+\section{Simple C}
+
+The simple language that many harolded as the "portable assembler" tried to be simple yet generic about how it operated.
+The concept of memory in the language is simply a single dimension of bytes.
+Think of a string, you have one end that you can call the begining, and the other end you call the end.
+Imagine that every inch of the string is a single byte, and how many inches you have is how many bytes of memory you have to work with.
+The first byte you can read or write is 0 inches away from the beginning of the string, so we can call it byte 0.
+If we want to write a value to the fith byte, then the start of that section of string is 4 inches away from the beginning.
 
 \begin{figure}[hb]
-	\begin{minted}{c++}
-		#include <stdio.h>
-
-		int main(){
-			//Comment
-			printf("Hello World\n");
-			return 0;
-		}
-	\end{minted}
-	\vspace{-20pt}
-	\caption{Basic Code Example}
-	\label{first_example}
+	\centering
+	% dont want this illistration to show up in the list of tables
+	\begin{tabular}{ *{8}{|c} }
+		\noalign{\smallskip}\hline
+		Address & 0 & 1 & 2 & 3 & 4 & 5 & ... \\
+		{\scriptsize Bits} & {\tiny 0 1 2 3 4 5 6 7} & {\tiny0 1 2 3 4 5 6 7} & {\tiny0 1 2 3 4 5 6 7} & {\tiny0 1 2 3 4 5 6 7} & {\tiny0 1 2 3 4 5 6 7} & {\tiny0 1 2 3 4 5 6 7} \\
+		\hline
+	\end{tabular}
+	\caption{Imaginary String With Sections}
+	\label{1d_memory_concept}
 \end{figure}
 
-As you can see above, the package does a nice job.
+\subsection{Simple Pointers}
 
+Pointers are the way we tell the language what address we are using.
+Normal variables don't make us know anything with where they are located, they simple "hold a value".
+Pointers dont "hold a value" but instead "hold an address".
+You can see some code in fig\ref{simple_pointer_operation} that does the basic operations of pointers.
 
-\begin{figure}[hb]
-	\begin{minted}[highlightlines=5]{c++}
-		#include <stdio.h>
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|p{1in} }
+		Code & Output \\ \hline
+		\begin{minipage}[t]{0.5\textwidth}
+		\begin{minted}[frame=none]{c++}
+			int a;
+			a = 10;
+			printf("%d\n",a);
 
-		int main(){
-			//Comment
-			printf("Hello World\n");
-			return 0;
-		}
-	\end{minted}
-	\vspace{-20pt}
-	\caption{Adding extra options}
-	\label{second_example}
+			int *p;
+			p = &a;
+			printf("%d\n",*p);
+
+			*p = 25;
+			printf("%d\n",a);
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{verbatim}
+		10
+		10
+		25
+		\end{verbatim}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Simple Pointer Operation}
+	\label{simple_pointer_operation}
 \end{figure}
 
-Above is an example of the code highlighting.
+The first section is the normal way of doing things; declaring a variable, assiging it a value, printing it out.
+It makes perfect sense that it prints out 10 given a variable holding the number 10.
+The second part is using a pointer to read the value of a; declare a pointer with the name p, give p the address of a, read the location that p points to.
+p is given the address of a (\mintinline{c++}{p=&a;}), not the value of a.
+When we go to print the value, we must \textit{dereference} the address.
+Using \textbf{*p} is the same as using \textbf{a} directly.
+Since both \textit{dereferencing} and using \textbf{a} directly is the same, we can do what is in the third section.
+Using the pointer, it gets dereferenced, and then a new value assigned to it.
+Since we wrote to the same spot in memory that \textbf{a} lives at, \textbf{a} now has the new value.
+
+\subsection{Walking The Memory With Pointers}
+
+Arrays are simple groups of variables.
+You say how many things of a certain type you want, and you get an array that is big enough to hold them all.
+Pointers though only reference to a single spot in memory, but, pointers are also just numbers!
+Remember that an address is really just a number saying how far from the beginning of memory.
+So since it is a number, can't we do math with it?
+Yes, and with simple addition and subtraction, we can move around arrays!
+
+The example code in fig\ref{walking_array_1} starts with our basic array of integers.
+We give the 4 indicies the numbers 2,5,8,11 to start with.
+The first print statment shows 3 different pointer uses; simple dereference, adding to the value, adding to the position.
+The first number that comes out is 2, because all we are doing is reading the value at the first index.
+The second number is 3 because we read the value and \textit{then} add 1 to it.
+The third number is 5 because we add one to the \textit{position} and then read the value.
+That last way is the same as saying \mintinline{c++}{b[0+1]}.
+If we instead want the 3 index, either we can do \mintinline{c++}{b[0+2]} or equivilently \mintinline{c++}{*(p+2)}.
+
+The last section just drives home how adding to the pointer is basicly the same as adding to the index in the square brackets doing it the normal way.
+It adds x to the position, and sets the value to something new.
+So what does this tell you about \textbf{b}?
+Looking at the line \mintinline{c++}{p = b}, you should notice that we didn't use the \textbf{\&} this time.
+That is because b is already a pointer!
+The language just hides it from you, doing the conversion of the square brackets.
+So typing \mintinline{c++}{b[3]=11;} is transparently translated to \mintinline{c++}{*(b+3)=11;}.
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|p{1in} }
+		Code & Output \\ \hline
+		\begin{minipage}[t]{0.7\textwidth}
+		\begin{minted}[frame=none]{c++}
+			int b[4];
+			b[0]=2; b[1]=5; b[2]=8; b[3]=11;
+
+			int *p = b;
+			printf("%d %d %d\n",*p,(*p)+1,*(p+1));
+
+			for(int x=0; x<4; x++)
+				*(p+x) = 4*x;
+			printf("%d %d %d %d\n",b[0],b[1],b[2],b[3]);
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{verbatim}
+		2 3 5
+		0 4 8 12
+		\end{verbatim}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Walking An Array Basics}
+	\label{walking_array_1}
+\end{figure}
+
+If you play around with pointers for a short time, you will probably try something like in fig\ref{walking_array_2}.
+The first section is making the array and having \textbf{p} point to it like before.
+The difference is that instead of adding to \textbf{p} when printing, it is permantly changed before then.
+When it gets printed now, it prints the third index even though we dont add to it during the print.
+This is because \textbf{p} now points farther into the array than just the beginning.
+
+But the more interesting thing is for the second section of fig\ref{walking_array_2}.
+It does not matter what the type of the thing we are pointing at is.
+We have an array of size 50, and we set the contents to the value of a string \mintinline{c++}{"Some Length"}.
+Since we are lazy and dont want to count ourselves the number of characters in our string, we instead march a pointer down the length of it with a counter.
+Strings in C are expected to \textit{always} end with a null terminator, aka the number 0;
+So the loop keeps going until the pointer points to a value of zero, with every itteration adding 1 to the counter and adding 1 to the pointer.
+When we print out the counter, we get 11, which is how many characters are in the string.
+Well probably, as I said, I am lazy and just expect the computer to get it right.
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|p{1in} }
+		Code & Output \\ \hline
+		\begin{minipage}[t]{0.7\textwidth}
+		\begin{minted}[frame=none]{c++}
+			//pointers can themselves be changed
+			int b[4];
+			b[0]=2; b[1]=4; b[2]=6; b[3]=8;
+			int *p = b;
+			p += 2;
+			printf("%d\n",*p);
+
+			//can be used to walk arrays of characters
+			char s[50]="Some Length";
+			char *sp = s;
+
+			int counter=0;
+			while(*sp != 0){
+				counter+=1;
+				sp += 1;
+			}
+			printf("%d\n",counter);
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{verbatim}
+		6
+		11
+		\end{verbatim}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Walking An Array Advanced}
+	\label{walking_array_2}
+\end{figure}
+
+\subsection{Scoping Still Applies}
+
+\subsection{Pointers All The Way Down}
+
+Assuming you got your head wrapped around the simple thing of pointers, lets do something that seems silly.
+A pointer is simply an address, and you normally use it by dereferencing it and messing with the value it points at.
+But what if we have a pointer point to another pointer?!
+
+
+\subsection{Getting Your Own Space}
+
+While you "can" simply choose what bytes in memory you try to write/read to/from, it will not work as you expect.
+There are many thing that go on in the computer, things other than your program.
+Because this is so complicated, you will need to ask the central authority of the system where you are allowed to do things.
+This is where system calls such as \mintinline{c++}{malloc()} com in.
+These functions do some magic behind the scenes and ask the kernel "Hey, i need X number of bytes to use".
+The kernel (usually) will hand back the answer of "Here is the address of your space to use".
+The address points to the first byte of a space that is X bytes long.
+
+% normal usage of malloc
+
+\subsubsection{Things Going Wrong}
+
+% OOM so returns 0 or soemthing
+
+% not using malloc and just deciding on your own
+
+
+% \newpage
+% \begin{figure}[hb]
+% 	\begin{minted}[highlightlines=5]{c++}
+% 		#include <stdio.h>
+
+% 		int main(){
+% 			//Comment
+% 			printf("Hello World\n");
+% 			return 0;
+% 		}
+% 	\end{minted}
+% 	\vspace{-20pt}
+% 	\caption{Adding extra options}
+% 	\label{second_example}
+% \end{figure}
+
+% Above is an example of the code highlighting.
 
 
 \end{document}
