@@ -2,12 +2,17 @@
 
 \usepackage{hyperref}
 \usepackage{caption}
+\usepackage[margin=1.25in]{geometry}
 
 \usepackage{graphicx}
 \graphicspath{ {images/} }
 
 \usepackage{minted}
 \setminted[c++]{frame=single,linenos=true,autogobble=true,numbersep=4pt,tabsize=4}
+
+\usepackage [english]{babel}
+\usepackage [autostyle, english = american]{csquotes}
+\MakeOuterQuote{"}
 
 
 \begin{document}
@@ -29,6 +34,8 @@
 \listoffigures
 % \listoftables
 \newpage
+\setlength{\parindent}{4em}
+\setlength{\parskip}{1em}
 
 \pagenumbering{arabic}
 
@@ -221,49 +228,1243 @@ Well probably, as I said, I am lazy and just expect the computer to get it right
 
 \subsection{Scoping Still Applies}
 
-\subsection{Pointers All The Way Down}
+So now that we have learned the basics of moving pointers around, there is an important thing to talk about.
+Pointers keep their address that they point to even when the variable they point to does not exist any more.
+Look at fig\ref{out_of_scope_1} for some really simple code to show it going wrong.
+The second part tries to get an address from the function.
+The function, wrongly, returns the address of a local variable.
+When the first function returns the address, it also deletes the variable.
+You should be familure with scoping rules in C style languages; you leave the enclosed space of curly braces, you leave their scope.
+Anything that is localy created in any scope will get deleted when leaving said scope.
 
-Assuming you got your head wrapped around the simple thing of pointers, lets do something that seems silly.
-A pointer is simply an address, and you normally use it by dereferencing it and messing with the value it points at.
-But what if we have a pointer point to another pointer?!
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|p{1.55in} }
+		Code & Output \\ \hline
+		\begin{minipage}[t]{0.5\textwidth}
+		\begin{minted}[frame=none]{c++}
+			int* bad_function(){
+				int x=25;
+				return &x;
+			}
 
+			int *p=__scope_of_variables();
+			printf("%d\n",*p);
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{verbatim}
+		Segmentation fault
+		\end{verbatim}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Accessing Out Of Scope Variables}
+	\label{out_of_scope_1}
+\end{figure}
+
+The Compiler knows about these problems and tries to even be helpful.
+Below is the message I get when I compile the above code.
+
+{\scriptsize
+\begin{verbatim}
+examples.cpp:83:6: warning: address of local variable ‘x’ returned [-Wreturn-local-addr]
+  int x=25;
+      ^
+\end{verbatim}
+}
+
+So now you might be thinking that you can tackle any task dealing with pointers, but there is a dark side to them.
+The issue is insideous and full of terror, something that makes people lay awake at night once they deal with it the first time, \textbf{\large Coincidental Behavior}.
+Look at fig\ref{out_of_scope_2} and notice how the pointer points to the just deleted  variable (curly braces make a nested scope).
+Then notice that the output has the right number!
+While, yes, this code does do the right thing, it is also wrong.
+
+The pointer accessing the address of the freshly deleted variable \textbf{x} is part of what is called \textit{Undefined Behavior}.
+Actually, a pointer pointing to anywhere in memory that is not currently valid or you don't own is undefined behavior.
+Just by chance, the code works this time, but on a different system, in a different context, it might not work.
+Using some flavor of undefined behavior and not noticing is not always the end of the world, but it can often lead to odd results during certain conditions.
+That is why things working by coincidence is scary; it works today, but maybe not tomorrow, and when it fails, it is often subtle as to the cause.
+
+(Just to note, \textit{Undefined Behavior} is not just about pointers, but about anything the standard of the language does not specify)
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|p{1.0in} }
+		Code & Output \\ \hline
+		\begin{minipage}[t]{0.4\textwidth}
+		\begin{minted}[frame=none]{c++}
+			int *p;
+			{ // some other scope
+				int x = 100;
+				p = &x;
+			}
+			printf("%d\n",*p);
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{verbatim}
+		100
+		\end{verbatim}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Accessing Out Of Scope Variables But This Time It Works}
+	\label{out_of_scope_2}
+\end{figure}
 
 \subsection{Getting Your Own Space}
 
-While you "can" simply choose what bytes in memory you try to write/read to/from, it will not work as you expect.
-There are many thing that go on in the computer, things other than your program.
-Because this is so complicated, you will need to ask the central authority of the system where you are allowed to do things.
+After scaring you with scoping issues, lets look at how we can get around such things.
 This is where system calls such as \mintinline{c++}{malloc()} com in.
-These functions do some magic behind the scenes and ask the kernel "Hey, i need X number of bytes to use".
+These functions do some magic behind the scenes and ask the kernel "Hey, I need X number of bytes to use".
 The kernel (usually) will hand back the answer of "Here is the address of your space to use".
 The address points to the first byte of a space that is X bytes long.
+Since it is just a length of bytes, we can pretend it is an array!
+In fig\ref{malloc_1} is some of the most basic code you can do.
 
-% normal usage of malloc
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|p{1.0in} }
+		Code & Output \\ \hline
+		\begin{minipage}[t]{0.7\textwidth}
+		\begin{minted}[frame=none]{c++}
+			int *p = (int*)malloc(4*sizeof(int));
+			for(int x=0; x<4; x++)
+				p[x] = x*4;
+			printf("%d %d %d %d\n",p[0],p[1],p[2],p[3]);
+			free(p);
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{verbatim}
+		0 4 8 12
+		\end{verbatim}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Simple malloc() Array}
+	\label{malloc_1}
+\end{figure}
 
-\subsubsection{Things Going Wrong}
+So what is the point of getting such a space?
+The space is entierly yours!
+Pass it around, write randomly in it, move things around, whatever you want!
+When does it disapear? When you want!
+Scoping means nothing to this piece of memory!
+So lets fix the previous example where it had a segfault using fig\ref{malloc_2}.
+It simply allocates enough space for a single integer, assigns a value, passes back the address, and then prints.
 
-% OOM so returns 0 or soemthing
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|p{1.0in} }
+		Code & Output \\ \hline
+		\begin{minipage}[t]{0.6\textwidth}
+		\begin{minted}[frame=none]{c++}
+			int* malloc_single(){
+				int *p = (int*)malloc(sizeof(int));
+				*p = 25;
+				return p;
+			}
+			int *p = malloc_single();
+			printf("%d\n",*p);
+			free(p);
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{verbatim}
+		25
+		\end{verbatim}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Working Around Scope With malloc()}
+	\label{malloc_2}
+\end{figure}
 
-% not using malloc and just deciding on your own
+When using \textit{*alloc()} calls, there are a few things to know about.
+Just because you left the scope of where you allocated the memory does not mean that memory goes away.
+This lets you do things like allocate an array, fill it, and then return the results back.
+To make the allocated space actually go away, you have to use the \textit{free()} function.
+You take the pointer that malloc handed you, and you give it to \textit{free()}.
+Then the memory is gone!
+This is a place where you have to be careful though, since you need to make sure you never access the same place again with a stale pointer somewhere.
+Also, there is the opposite problem of having memory allocated but no pointer pointing at it.
+This memory can essentailly be considered lost, and we call that a \textit{memory leak}.
+If your program has a memory leak, then as it runs, it might allocate all the RAM on the system even though it is not usign it.
 
+\subsection{The Right Call For The Job}
 
-% \newpage
-% \begin{figure}[hb]
-% 	\begin{minted}[highlightlines=5]{c++}
-% 		#include <stdio.h>
+There are 3 functions to allocate memory, each do a different thing for a different job; \textit{malloc()}, \textit{calloc()}, \textit{realloc()}.
+While you can do everything with the simple \textit{malloc()}, the other 2 provide a couple extra features for specific jobs.
 
-% 		int main(){
-% 			//Comment
-% 			printf("Hello World\n");
-% 			return 0;
-% 		}
-% 	\end{minted}
-% 	\vspace{-20pt}
-% 	\caption{Adding extra options}
-% 	\label{second_example}
-% \end{figure}
+\subsubsection{malloc()}
 
-% Above is an example of the code highlighting.
+\begin{verbatim}
+void *malloc(size_t size);
+\end{verbatim}
 
+This is the simplest of the 3, where you ask for a number of bytes and you are handed back a pointer.
+As I have already done examples above with \textit{malloc()}, I will forgo using the sapce here.
+An import note is that the memory is uninitiallised, meaning you dont know what values will already be stored there.
+
+\subsubsection{calloc()}
+
+\begin{verbatim}
+void *calloc(size_t nmemb, size_t size);
+\end{verbatim}
+
+This is kindof the same as \textit{malloc()} in that it gives you some space to work around in, but is different in that it is more array oriented.
+You pass it two arguments; number of elements, and size of each element.
+What it hands back is enough room to hold everything you just asked for, just like an array.
+Example in fig\ref{calloc_example}.
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|p{0.8in} }
+		Code & Output \\ \hline
+		\begin{minipage}[t]{0.7\textwidth}
+		\begin{minted}[frame=none]{c++}
+			int *p = (int*)calloc(4,sizeof(int));
+			for(int x=0; x<4; x++)
+				p[x] = x*4;
+			printf("%d %d %d %d\n",p[0],p[1],p[2],p[3]);
+			free(p);
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{verbatim}
+		0 4 8 12
+		\end{verbatim}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Example Usage Of calloc()}
+	\label{calloc_example}
+\end{figure}
+
+You can do the same thing with \textit{malloc()} by doing \mintinline{c++}{malloc(nmemb * size)}.
+The main difference is that \textit{calloc()} does not return uninitialized memory and instead sets all the bytes to 0 first.
+This can be important as it makes sure your memory is in a known state when you use it if you don't initialize it yourself.
+
+\subsubsection{realloc()}
+
+\begin{verbatim}
+void *realloc(void *ptr, size_t size);
+\end{verbatim}
+
+This is a more special function of the 3.
+The use for this is not to (neccisarily) allocate memory, but to chage the size of the allocation you already got.
+Assume you already have allocated memory for an array, but then are asked to add more things to the array.
+Using \textit{realloc()}, you simply give it the pointer to the current memory, ask it to make it a given size, and use the pointer it gives back to you.
+It handles copying all the data over to the new memory.
+Example in fig\ref{realloc_example}.
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|p{0.8in} }
+		Code & Output \\ \hline
+		\begin{minipage}[t]{0.7\textwidth}
+		\begin{minted}[frame=none]{c++}
+			int *p = (int*)calloc(2,sizeof(int));
+			p[0]=1; p[1]=1;
+
+			p = (int*)realloc(p,20*sizeof(int));
+			for(int x=2; x<20; x++)
+				p[x] = p[x-1] + p[x-2];
+			printf("%d\n",p[19]);
+			free(p);
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{verbatim}
+		6765
+		\end{verbatim}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Example Usage Of realloc()}
+	\label{realloc_example}
+\end{figure}
+
+What happens is realloc tries to make the current block larger and return the same pointer back.
+If you are asking it to shrink the block to be smaller than it currently is, it always will return the same pointer.
+If you ask it to make the block larger, then it might need to move to a different part of memory.
+When it returns the pointer to you and it is different, you just use the new pointer.
+The data will have been copied over, and the old pointer will already have been \textit{free()}ed.
+
+A few notes about realloc:
+\begin{itemize}
+	\item If it grows a block, the new section will be uninitialized
+	\item If it moves a block, it copies the whole od block over even if you were not using the whole old block
+	\item If you ask for a size of zero, it will actually free the pointer you give it
+	\item If you give it a pointer \textit{NULL} and some size, it acts the same as \textit{malloc()}
+\end{itemize}
+
+\subsubsection{free()}
+
+As you should already have picked up on, this does the exact opposite of the other commands.
+After you are done using a block of memory, you used the \textit{free()} function to release it back to the OS.
+You must pass the pointer that the other function gave to you, not some pointer in the middle of the block.
+
+You can pass in \textit{NULL} to it, and it does nothing in that case.
+This is great for automatic cleanup code; you free the pointer, set the pointer to \textit{NULL}, don't worry if you call free on that pointer again.
+
+\subsection{Honorable Mentions}
+
+Some things that I consider dealing with memory but are not often used, have specific use cases, more advanced than I want to delve into right now, or too dangerous to use.
+
+\begin{itemize}
+	\item \textit{volitile} - This tells the compile that it can't optimize any operations with a variable. Usually this is a bad idea and the reasons to use it are typically for things like kernel and driver code.
+	\item \textit{reallocarray()} - Similar relationship that \textit{calloc()} has with \textit{malloc()}, except with \textit{realloc()}
+	\item \textit{alloca()} - Allocates memory on the stack instead of the heap. Basicly means that when you return from the function that it was made in, it becomes invalid. Basicly the same as a local array variable.
+	\item \textit{mmap()} and \textit{munmap()} - Maps files and devices into memory so that writes and reads can be done with pointers.
+	\item \textit{mallopt()} - Changes the behavior of \textit{malloc()}.
+	\item \textit{getpagesize()} - Returns the size of a single page of memory is. Returns 4096 on my system. Seems it is not even implemented on all systems these days.
+	\item \textit{sysconf()} - Get information about the system at run time. Depending on what paramter you pass in determines what information it returns.
+\end{itemize}
+
+\subsection{Showing Off}
+
+Just to show off some, I made a dynamic array thing in C.
+While the API is a little rough, it does make sure that I am doing things the right way.
+
+\begin{figure}[htb]
+	\centering
+	\begin{minipage}[t]{0.7\textwidth}
+	\begin{minted}[frame=single]{c++}
+		struct DynamicArray{
+			void *data;
+			int capacity;
+			int length; // here for my own convenience
+		};
+	\end{minted}
+	\end{minipage}
+	% \vspace{-20pt}
+	\caption{Data Structure For The Dynamic Array}
+	\label{dynamic_simple_struct}
+\end{figure}
+
+\begin{figure}[htb]
+	\centering
+	\begin{minted}[frame=single]{c++}
+		struct DynamicArray* make_array(int size){
+			if(size<=0)
+				size = 1;
+			struct DynamicArray *info = 
+				(struct DynamicArray*)malloc(sizeof(struct DynamicArray));
+			info->data = malloc(size);
+			info->capacity = size;
+			info->length = 0;
+		}
+		void delete_array(struct DynamicArray* info){
+			free(info->data);
+			free(info);
+		}
+	\end{minted}
+	% \vspace{-20pt}
+	\caption{Functions To Create And Delete The Array}
+	\label{dynamic_simple_constructor}
+\end{figure}
+
+\begin{figure}[htb]
+	\centering
+	\begin{minted}[frame=single]{c++}
+		void resize_array(struct DynamicArray* info,int size){
+			if(size==0) size = 1;
+			if(size<0){
+				int delta = info->capacity;
+				if(delta > 128) delta = 128;
+				info->data = realloc(info->data,delta+info->capacity);
+				info->capacity += delta;
+			}else{
+				info->data = realloc(info->data,size);
+				info->capacity = size;
+			}
+		}
+	\end{minted}
+	% \vspace{-20pt}
+	\caption{Function That Resizes The Array}
+	\label{dynamic_simple_resize}
+\end{figure}
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|@{\hskip 16pt}l }
+		\hline \\
+		Code &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{minted}[frame=none]{c++}
+			//Make array and fill with 50s
+			struct DynamicArray *array = make_array(10*sizeof(int));
+			for(int x=0; x<10; x++)
+				((int*)array->data)[x] = 50;
+			array->length = 10; // just to help me bookkeep
+
+			//lets just check that things are working as we expect
+			//print all 10 indicies
+			for(int x=0; x<array->length; x++){
+				printf(" %3d ",((int*)array->data)[x]);
+			}
+			printf("\n");
+		\end{minted}
+		\end{minipage}
+		\\ \hline
+		Output &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{verbatim}
+  50   50   50   50   50   50   50   50   50   50
+		\end{verbatim}
+		\end{minipage}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{First Dynamic Array Test: Simple Use}
+	\label{dynamic_simple_test1}
+\end{figure}
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|@{\hskip 16pt}l }
+		\hline \\
+		Code &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{minted}[frame=none]{c++}
+			//now lets make the array larger
+			resize_array(array,30*sizeof(int));
+			for(int x=0; x<10; x++)
+				((int*)array->data)[x+10] = 100;
+			for(int x=0; x<10; x++)
+				((int*)array->data)[x+20] = 150;
+			array->length = 30; // just to help me bookkeep
+
+			print_array(array);
+		\end{minted}
+		\end{minipage}
+		\\ \hline
+		Output &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{verbatim}
+  50   50   50   50   50   50   50   50   50   50
+ 100  100  100  100  100  100  100  100  100  100 
+ 150  150  150  150  150  150  150  150  150  150 
+		\end{verbatim}
+		\end{minipage}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Second Dynamic Array Test: Resize Larger}
+	\label{dynamic_simple_test2}
+\end{figure}
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|@{\hskip 16pt}l }
+		\hline \\
+		Code &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{minted}[frame=none]{c++}
+			//now lets make the array smaller
+			resize_array(array,20*sizeof(int));
+			array->length = 20; // just to help me bookkeep
+			print_array(array);
+		\end{minted}
+		\end{minipage}
+		\\ \hline
+		Output &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{verbatim}
+  50   50   50   50   50   50   50   50   50   50
+ 100  100  100  100  100  100  100  100  100  100
+		\end{verbatim}
+		\end{minipage}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Second Dynamic Array Test: Resize Smaller}
+	\label{dynamic_simple_test3}
+\end{figure}
+
+\clearpage
+\section{C++ Doing Objects}
+
+Now that we have gone through the way C does things, I think it is prudent to look at C++.
+The ideas are mostly the same, with memory being 1-dimensional and scope being something to look out for.
+The thing that makes C++ really different from C is having \textit{Objects}.
+While a bit obvious, there are 2 main things about working with objects that set it apart from regular C; creating/destroying and how to use/encapsulate the memory.
+
+\subsection{Allocating Objects}
+
+For the most part, there are only 2 new keywords to remember; \textit{new} and \textit{delete}.
+When doing C++, often you will want a more permant object than just what is provided in your scope.
+Unfortuantly, \textit{malloc()} and family don't play well with objects.
+
+When you allocate a block for, lets say, integers, all you get back is a region of memory to use.
+That is fine for such simple things, but objects have a bit more to them that runs \textit{implicitly}.
+Namely constructors and destructors are what gets missed doing it the C way, hence getting 2 new keywords.
+Looking at fig\ref{object_alloc_1} you see a simple object that prints when it gets constructed and destructed.
+Well, it is supposed to be, but the \textit{malloc()} seems to not do such things!
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|@{\hskip 16pt}l }
+		\hline \\
+		Code &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{minted}[frame=none]{c++}
+			class Simple{
+			public:
+				Simple(){printf("Constructed\n");}
+				~Simple(){printf("Destructed\n");}
+			};
+
+			Simple *p = (Simple*)malloc(sizeof(Simple));
+			free(p);
+		\end{minted}
+		\end{minipage}
+		\\ \hline
+		Output &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{verbatim}
+		\end{verbatim}
+		\end{minipage}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Wrongly Allocating Objects}
+	\label{object_alloc_1}
+\end{figure}
+
+Seeing that it doesn't work the old way, lets try with the new keywords in fig\ref{object_alloc_2}.
+The output clearly shows the text being printed, so it works as expected.
+In reality, it is mostly doing the same thing as \textit{malloc()} except it also adds in calls to the constructor and destructor.
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|@{\hskip 16pt}l }
+		\hline \\
+		Code &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{minted}[frame=none]{c++}
+			class Simple{
+			public:
+				Simple(){printf("Constructed\n");}
+				~Simple(){printf("Destructed\n");}
+			};
+
+			Simple *p = new Simple;
+			delete p;
+		\end{minted}
+		\end{minipage}
+		\\ \hline
+		Output &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{verbatim}
+		Constructed
+		Destructed
+		\end{verbatim}
+		\end{minipage}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Rightly Allocating Objects}
+	\label{object_alloc_2}
+\end{figure}
+
+As you probably would expect from something that is basicly a fancy \textit{malloc()}, the allocated object outlives the scope it was created in.
+In fig\ref{object_alloc_3} we do the normal test of returning the address of something from another function and see if it segfaults.
+As is evident in the output, it works just as expected and all is good.
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|@{\hskip 16pt}l }
+		\hline \\
+		Code &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{minted}[frame=none]{c++}
+			class HelloWorld{
+			public:
+				void print(){printf("Hello World\n");}
+			};
+
+			HelloWorld* some_other_scope(){
+				return new HelloWorld;
+			}
+			HelloWorld *ppp = some_other_scope();
+			ppp->print();
+			delete ppp;
+		\end{minted}
+		\end{minipage}
+		\\ \hline
+		Output &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{verbatim}
+		Hello World
+		\end{verbatim}
+		\end{minipage}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{new Objects Also Outlive Their Scope}
+	\label{object_alloc_3}
+\end{figure}
+
+We are able to allocate a single object, but for true feature parity we must be able to allocate arrays too.
+A little syntactical sugar comes in the form of \textit{new[]} and \textit{delete[]}.
+The \textit{new[]} tries to emulate the normal way of declaring an array and the \textit{delete[]} basicly works the same as before.
+A simple example of classes that count themselves is shown in fig\ref{object_alloc_4}.
+Only one thing to remember, if you use \textit{new[]}, you should use \textit{delete[]} even though \textit{delete} doesn't throw any errors.
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|@{\hskip 16pt}l }
+		\hline \\
+		Code &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{minted}[frame=none]{c++}
+			class Counter{
+				static int counter;
+				int our_value;
+			public:
+				Counter(){
+					our_value = counter;
+					counter++;
+				}
+				void print(){printf(" %d ",our_value);}
+			};
+			int Counter::counter = 0;
+
+			Counter *array = new Counter[5];
+			for(int x=0; x<5; x++)
+				array[x].print();
+			printf("\n");
+			delete[] array;
+		\end{minted}
+		\end{minipage}
+		\\ \hline
+		Output &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{verbatim}
+		 0  1  2  3  4 
+		\end{verbatim}
+		\end{minipage}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Allocating Arrays Of Objects}
+	\label{object_alloc_4}
+\end{figure}
+
+\subsection{malloc() Still Is Usefull In C++}
+
+Even with the new keywords that make objects behave properly, that doesn't mean \textit{malloc()} is superseded.
+The best example I can think of is (once again) a dynamicly sized array.
+Having such a thing is useful in programming, every language has something, and in C++ it is called \textit{std::vector}.
+Encapsulating the sometimes tricky bits of memory managment is what objects are great at.
+The following snippets show a basic implementation of such a thing, and that \textit{malloc()} and \textit{realloc()} is a key part of it.
+
+\begin{figure}
+	\centering
+	\begin{minted}[frame=single]{c++}
+		template <typename T>
+		class vector{
+			T* data;
+			int length,capacity;
+		public:
+			vector(){
+				data = (T*)malloc(sizeof(T));
+				length = 0;
+				capacity = 1;
+			};
+			~vector(){delete[] data;}
+			void push_back(T& item);
+			void pop_back();
+			T& operator[](int index);
+		};
+	\end{minted}
+	\caption{Class Definition For Dynamic Array Object}
+	\label{vector_definition}
+\end{figure}
+
+\begin{figure}
+	\centering
+	\begin{minted}[frame=single]{c++}
+		template<typename T>
+		void vector<T>::push_back(T& item){
+			if(length >= capacity){
+				//need more room, time to realloc()
+				int delta = capacity;
+				delta %= 128; //only get bigger by steps of 128 at most
+				data = (T*)realloc(data,(delta+capacity) * sizeof(T));
+				capacity += delta;
+			}
+			data[length] = item;
+			length++;
+		}
+
+		template<typename T>
+		void vector<T>::pop_back(){
+			length--;
+		}
+	\end{minted}
+	\caption{Dynamic Add And Remove Methods}
+	\label{vector_push_pop}
+\end{figure}
+
+\begin{figure}
+	\centering
+	\begin{minted}[frame=single]{c++}
+		template<typename T>
+		void vector<T>::pop_back(){
+			length--;
+		}
+	\end{minted}
+	\vspace{-20pt}
+	\caption{Array Access Method}
+	\label{vector_access}
+\end{figure}
+
+The code in figures \ref{vector_definition} \ref{vector_push_pop} \ref{vector_access} is the implementation of such an array thing.
+It is an object that will grow itself if you try to push too many items onto the back of it.
+It starts with enough room to hold 1 item internally, and so nearly immediately will need to grow the block size to accommodate more.
+When it grows, it initially doubles its capacity, but if it would be an increase of more than 128, it limits the increase to 128 more items.
+To make it smaller, all it needs to do is subtract frrom the internal counter of how long it is.
+
+In fig\ref{vector_test_int} you see a simple test of the object holding integers.
+Running through the 3 main ways of changing the data, it seems to hold up just fine.
+The \textit{realloc()} is handeled transparently, but is still a vital part of how the object works.
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|@{\hskip 16pt}l }
+		\hline \\
+		Code &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{minted}[frame=none,fontsize=\small]{c++}
+			vector<int> test;
+			//add items
+			for(int x=0; x<10; x++)
+				test.push_back(x);
+			//read items
+			for(int x=0; x<test.size(); x++)
+				printf(" %d ",test[x]);
+			printf("\n");
+
+			//remove items
+			for(int x=0; x<5; x++)
+				test.pop_back();
+			print_items(test);
+
+			//change items
+			for(int x=0; x<5; x++)
+				test[x] = (x+1) * 5;
+			print_items(test);
+		\end{minted}
+		\end{minipage}
+		\\ \hline
+		Output &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{verbatim}
+		0  1  2  3  4  5  6  7  8  9 
+		0  1  2  3  4 
+		5  10  15  20  25
+		\end{verbatim}
+		\end{minipage}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Testing The Vector With Simple Integers}
+	\label{vector_test_int}
+\end{figure}
+
+In fig\ref{vector_test_object} is the same test being done with the previously made Counter object.
+It mostly does the same things for the test, but it shows that it handles constructing objects correctly.
+
+\begin{figure}[htb]
+	\centering
+	\begin{tabular}{ l|@{\hskip 16pt}l }
+		\hline \\
+		Code &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{minted}[frame=none]{c++}
+			class Counter{
+				static int counter;
+			public:
+				int our_value;
+				Counter(){
+					our_value = counter;
+					counter++;
+				}
+				void print(){printf(" C%d ",our_value);}
+			};
+			int Counter::counter = 0;
+
+			vector<Counter> test;
+			//add items
+			for(int x=0; x<10; x++)
+				test.push_back(Counter());
+			print_items(test);
+
+			//remove items
+			for(int x=0; x<5; x++)
+				test.pop_back();
+			print_items(test);
+
+			//change items
+			for(int x=0; x<5; x++)
+				test[x].our_value = (x+1) * 5;
+			print_items(test);
+		\end{minted}
+		\end{minipage}
+		\\ \hline
+		Output &
+		\begin{minipage}[t]{0.8\textwidth}
+		\begin{verbatim}
+		C0  C1  C2  C3  C4  C5  C6  C7  C8  C9
+		C0  C1  C2  C3  C4
+		C5  C10  C15  C20  C25
+		\end{verbatim}
+		\end{minipage}
+		\\ \hline
+	\end{tabular}
+	% \vspace{-20pt}
+	\caption{Testing The Vector With Objects}
+	\label{vector_test_object}
+\end{figure}
+
+%============================================================================================================================================
+
+\appendix
+\clearpage
+\newpage
+\section{Mini-Examples Code Used For Double Checking}
+
+\begin{minted}[frame=none]{c++}
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
+//1-11 = 16:00 to 17:30 - move files in git and setup readme files
+//1-12 = 18:00 to 18:30 - start on example.cpp
+//1-13 = 19:00 to  2:30 - make outline of example.cpp, get basic things ready, simple coding start, get VM ready with visual studio and cygwin+git, start latex document
+//1-14 = 00:00 to  4:00 - work on examples and report
+//1-16 = 12:00 to  0:30 - finish C part of the paper (-30 mins for lunch)(-30mins to fix vacuum)
+
+/* topics
+
+simple pointers in a 1d memory
+pointers to walk an array
+	going out of bounds of the array
+pointers are invalid outside of their scope
+	show still get right value when read from invalid location when ar leaves the scope
+	explain why this is bad
+malloc() - a "replacment" for global variables
+	gives back memory that your program holds until the program ends
+	free() - tell the OS that we dont need this memory any more
+calloc()
+realloc()
+	what it does
+	example making a dynamicly sizing array (like std::vector) with a struct and functions
+volatile - also mention that often it is not needed as it gets in the way of optimisers in compilers
+make dynamicly sized array thingy but using a class
+
+new and delete
+new[] and delete[]
+reference counting to know when to clean up
+defered copy until write for an object
+	http://doc.qt.io/archives/qt-4.8/implicit-sharing.html#implicit-data-sharing
+	lets you pass objects by value but keep the bulk of data frrom needing to be copied until written
+*/
+
+//simple pointers
+// showing a pointer is just a reference to a point in memory
+void simple_pointer(){
+	int a;
+	a = 10;
+	printf("%d\n",a);
+
+	int *p;
+	p = &a;
+	printf("%d\n",*p);
+
+	*p = 25;
+	printf("%d\n",a);
+}
+
+//===========================================================================================================
+void pointers_walking_arrays(){
+	int b[4];
+	b[0]=2; b[1]=5; b[2]=8; b[3]=11;
+
+	int *p = b;
+	printf("%d %d %d\n",*p,(*p)+1,*(p+1));
+
+	for(int x=0; x<4; x++)
+		*(p+x) = 4*x;
+	printf("%d %d %d %d\n",b[0],b[1],b[2],b[3]);
+}
+
+void pointers_walking_arrays2(){
+	//pointers can themselves be changed
+	int b[4];
+	b[0]=2; b[1]=4; b[2]=6; b[3]=8;
+	int *p = b;
+	p += 2;
+	printf("%d\n",*p);
+
+	//pointers can be used to walk arrays of characters
+	char s[50]="Some Length";
+	char *sp = s;
+
+	int counter=0;
+	while(*sp != 0){
+		counter+=1;
+		sp += 1;
+	}
+	printf("%d\n",counter);
+}
+
+//===========================================================================================================
+int* __scope_of_variables(){
+	int x=25;
+	return &x;
+}
+void scope_of_variables(){
+	int *p=__scope_of_variables();
+	printf("%d\n",*p);
+}
+
+void scope_of_variables2(){
+	int *p;
+	{ // some other scope
+		int x = 100;
+		p = &x;
+	}
+	printf("%d\n",*p);
+}
+
+//===========================================================================================================
+void malloc_simple(){
+	int *p = (int*)malloc(4*sizeof(int));
+	for(int x=0; x<4; x++)
+		p[x] = x*4;
+	printf("%d %d %d %d\n",p[0],p[1],p[2],p[3]);
+	free(p);
+}
+
+int* __malloc_single(){
+	int *p = (int*)malloc(sizeof(int));
+	*p = 25;
+	return p;
+}
+void malloc_single(){
+	int *p = __malloc_single();
+	printf("%d\n",*p);
+	free(p);
+}
+
+void calloc_call(){
+	int *p = (int*)calloc(4,sizeof(int));
+	for(int x=0; x<4; x++)
+		p[x] = x*4;
+	printf("%d %d %d %d\n",p[0],p[1],p[2],p[3]);
+	free(p);
+}
+
+void realloc_example(){
+	int *p = (int*)calloc(2,sizeof(int));
+	p[0]=1; p[1]=1;
+
+	p = (int*)realloc(p,20*sizeof(int));
+	for(int x=2; x<20; x++)
+		p[x] = p[x-1] + p[x-2];
+	printf("%d\n",p[19]);
+	free(p);
+}
+
+void page_size(){
+	printf("%d\n",getpagesize());
+}
+
+//===========================================================================================================
+class Simple{
+public:
+	Simple(){printf("Constructed\n");}
+	~Simple(){printf("Destructed\n");}
+};
+
+void object_malloc(){
+	Simple *p = (Simple*)malloc(sizeof(Simple));
+	free(p);
+}
+void object_new(){
+	Simple *p = new Simple;
+	delete p;
+}
+
+class HelloWorld{
+public:
+	void print(){printf("Hello World\n");}
+};
+HelloWorld* __some_other_scope(){
+	return new HelloWorld;
+}
+void some_other_scope(){
+	HelloWorld *ppp = __some_other_scope();
+	ppp->print();
+	delete ppp;
+}
+
+class Counter{
+	static int counter;
+	int our_value;
+public:
+	Counter(){
+		our_value = counter;
+		counter++;
+	}
+	void print(){printf(" %d ",our_value);}
+};
+int Counter::counter = 0;
+void object_array(){
+	Counter *array = new Counter[5];
+	for(int x=0; x<5; x++)
+		array[x].print();
+	printf("\n");
+	delete[] array;
+}
+
+int main(){
+	// simple_pointer();
+
+	// pointers_walking_arrays();
+	// pointers_walking_arrays2();
+
+	// scope_of_variables();
+	// scope_of_variables2();
+
+	// malloc_simple();
+	// malloc_single();
+	// calloc_call();
+	// realloc_example();
+	// page_size();
+
+	// object_malloc();
+	// object_new();
+	// some_other_scope();
+	object_array();
+	return 0;
+}
+\end{minted}
+
+\newpage
+\section{Code For Simple Dynamic Array}
+
+\begin{minted}[frame=none]{c++}
+#include <stdio.h>
+#include <stdlib.h>
+
+struct DynamicArray{
+	void *data;
+	int capacity;
+	int length; // here for my own convenience
+};
+
+struct DynamicArray* make_array(int size){
+	if(size<=0)
+		size = 1;
+	struct DynamicArray *info = (struct DynamicArray*)malloc(sizeof(struct DynamicArray));
+	info->data = malloc(size);
+	info->capacity = size;
+	info->length = 0;
+}
+void delete_array(struct DynamicArray* info){
+	free(info->data);
+	free(info);
+}
+void resize_array(struct DynamicArray* info,int size){
+	if(size==0) size = 1;
+	if(size<0){
+		int delta = info->capacity;
+		if(delta > 128) delta = 128;
+		info->data = realloc(info->data,delta+info->capacity);
+		info->capacity += delta;
+	}else{
+		info->data = realloc(info->data,size);
+		info->capacity = size;
+	}
+}
+
+int main(){
+	//Make array and fill with 50s
+	struct DynamicArray *array = make_array(10*sizeof(int));
+	for(int x=0; x<10; x++)
+		((int*)array->data)[x] = 50;
+	array->length = 10; // just to help me bookkeep
+
+	//lets just check that things are working as we expect
+	//print all 10 indicies
+	for(int x=0; x<array->length; x++){
+		printf(" %3d ",((int*)array->data)[x]);
+	}
+	printf("\n");
+	
+	//now lets make the array larger
+	resize_array(array,30*sizeof(int));
+	for(int x=0; x<10; x++)
+		((int*)array->data)[x+10] = 100;
+	for(int x=0; x<10; x++)
+		((int*)array->data)[x+20] = 150;
+	array->length = 30; // just to help me bookkeep
+
+	//lets just check that things are working as we expect
+	for(int x=0; x<array->length; x++){
+		if(x%10 == 0)
+			printf("\n");
+		printf(" %3d ",((int*)array->data)[x]);
+	}
+	printf("\n");
+
+	//now lets make the array smaller
+	resize_array(array,20*sizeof(int));
+	array->length = 20; // just to help me bookkeep
+
+	//lets just check that things are working as we expect
+	for(int x=0; x<array->length; x++){
+		if(x%10 == 0)
+			printf("\n");
+		printf(" %3d ",((int*)array->data)[x]);
+	}
+	printf("\n");
+
+	return 0;
+}
+\end{minted}
+
+\newpage
+\section{Code For Object Based Dynamic Array}
+
+\begin{minted}[frame=none]{c++}
+#include <stdio.h>
+#include <stdlib.h>
+
+template <typename T>
+class vector{
+	T* data;
+	int length,capacity;
+public:
+	vector(){
+		data = (T*)malloc(sizeof(T));
+		length = 0;
+		capacity = 1;
+	};
+	~vector(){delete[] data;}
+	void push_back(T& item);
+	void push_back(T item);
+	void pop_back();
+	T& operator[](int index);
+	int size(){return length;}
+};
+template<typename T>
+void vector<T>::push_back(T& item){
+	if(length >= capacity){
+		//need more room, time to realloc()
+		int delta = capacity;
+		delta %= 128; //only get bigger by steps of 128 at most
+		data = (T*)realloc(data,(delta+capacity) * sizeof(T));
+		capacity += delta;
+	}
+	data[length] = item;
+	length++;
+}
+template<typename T>
+void vector<T>::push_back(T item){
+	if(length >= capacity){
+		//need more room, time to realloc()
+		int delta = capacity;
+		delta %= 128; //only get bigger by steps of 128 at most
+		data = (T*)realloc(data,(delta+capacity) * sizeof(T));
+		capacity += delta;
+	}
+	data[length] = item;
+	length++;
+}
+
+template<typename T>
+void vector<T>::pop_back(){
+	length--;
+}
+
+template<typename T>
+T& vector<T>::operator[](int index){
+	return data[index];
+}
+
+class Counter{
+	static int counter;
+public:
+	int our_value;
+	Counter(){
+		our_value = counter;
+		counter++;
+	}
+	void print(){printf(" C%d ",our_value);}
+};
+int Counter::counter = 0;
+
+int main(){
+	// vector<int> test;
+	// //add items
+	// for(int x=0; x<10; x++)
+	// 	test.push_back(x);
+	// //read items
+	// for(int x=0; x<test.size(); x++)
+	// 	printf(" %d ",test[x]);
+	// printf("\n");
+
+	// //remove items
+	// for(int x=0; x<5; x++)
+	// 	test.pop_back();
+	// //read items
+	// for(int x=0; x<test.size(); x++)
+	// 	printf(" %d ",test[x]);	
+	// printf("\n");
+
+	// //change items
+	// for(int x=0; x<5; x++)
+	// 	test[x] = (x+1) * 5;
+	// //read items
+	// for(int x=0; x<test.size(); x++)
+	// 	printf(" %d ",test[x]);	
+	// printf("\n");
+
+	vector<Counter> test;
+	//add items
+	for(int x=0; x<10; x++)
+		test.push_back(Counter());
+	//read items
+	for(int x=0; x<test.size(); x++)
+		test[x].print();
+	printf("\n");
+
+	//remove items
+	for(int x=0; x<5; x++)
+		test.pop_back();
+	//read items
+	for(int x=0; x<test.size(); x++)
+		test[x].print();
+	printf("\n");
+
+	//change items
+	for(int x=0; x<5; x++)
+		test[x].our_value = (x+1) * 5;
+	//read items
+	for(int x=0; x<test.size(); x++)
+		test[x].print();
+	printf("\n");
+
+	return 0;
+}
+\end{minted}
 
 \end{document}
