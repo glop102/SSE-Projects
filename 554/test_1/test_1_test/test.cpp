@@ -1,5 +1,9 @@
 #include "pch.h"
+#include <string>
 #include "../test_1/simple_functions.cpp"
+#include "../test_1/Objects.h"
+
+using std::string;
 
 TEST(TestCaseName, TestName) {
   EXPECT_EQ(1, 1);
@@ -98,3 +102,59 @@ TEST(BadPractice, castingClasses) {
 	//the only operational difference is that i have defined a second object b
 	//when a cast as something else does an erronious write to a third variable, it moves into territory it should not have
 //}
+
+TEST(ClassTest,t1){
+	Base1 *a, *bb;
+	Sub1 *b;
+	a = new Base1;
+	b = new Sub1;
+
+	string name = a->name();
+	EXPECT_EQ(name, "Base1");
+
+	name = b->name();
+	EXPECT_EQ(name, "Sub1");
+
+	bb = (Base1*)b;
+	name = bb->name();
+	EXPECT_EQ(name, "Sub1");
+
+	delete a;
+	delete b;
+}
+
+TEST(ClassTest, t2) {
+	Base2 *a, *bb;
+	Sub2 *b;
+	a = new Base2;
+	b = new Sub2;
+
+	string name = a->name();
+	EXPECT_EQ(name, "Base2");
+
+	name = b->name();
+	EXPECT_EQ(name, "Sub2");
+
+	bb = (Base2*)b;
+	name = bb->name();
+	EXPECT_EQ(name, "Sub2");
+
+	delete a;
+	delete b;
+}
+
+TEST(ClassTest, t3) {
+	Base3 *a;
+	Sub3 *b;
+	a = new Base3;
+	b = new Sub3;
+
+	string name = a->name();
+	EXPECT_EQ(name, "Global");
+
+	name = b->name();
+	EXPECT_EQ(name, "Global");
+
+	delete a;
+	delete b;
+}
