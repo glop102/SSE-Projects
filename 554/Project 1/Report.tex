@@ -214,7 +214,7 @@ I am used to a workflow on the command line under linux.
 The idea of an IDE is neat, but I typically only use it for a handy text editor that gives suggestions as I type.
 It will be an interesting experiance as I work with my team on this.
 
-\section{Screwing With Classes}
+\section{Playing With Classes}
 
 As the section fo the book is about how to make classes with various restrictions and features, I suppose I should mention some things about that myself.
 I simply added this code into my test project for Google Test.
@@ -222,11 +222,600 @@ I simply added this code into my test project for Google Test.
 The book has many pages about specifics of what to do for exact situations.
 I instead am just going to give a short list of things here that sumarize the important bits.
 
-\begin{figure}[ht]
-	\begin{minted}{c++}
-	\end{minted}
+\newpage
+In fig\ref{fig:class_ex1} is the most simple example subclass you can do in c++.
+The test on the right passes.
+The first two conditional checks show that things make sense with each returning their own proper names.
+The last conditional check has the subclass casted as a base class, and so it returns the name of the base class.
+
+\begin{figure}[!ht]
+	\centering
+	\begin{tabular}{c c}
+		\begin{minipage}[t]{0.45\textwidth}
+		\begin{minted}{c++}
+			class Base1 {
+			public:
+				string name();
+			};
+			class Sub1:public Base1 {
+			public:
+				string name();
+			};
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{minipage}[t]{0.5\textwidth}
+		\begin{minted}{c++}
+			TEST(ClassTest,t1){
+				Base1 *a, *bb;
+				Sub1 *b;
+				a = new Base1;
+				b = new Sub1;
+
+				string name = a->name();
+				EXPECT_EQ(name, "Base1");
+
+				name = b->name();
+				EXPECT_EQ(name, "Sub1");
+
+				bb = (Base1*)b;
+				name = bb->name();
+				EXPECT_EQ(name, "Base1");
+
+				delete a;
+				delete b;
+			}
+		\end{minted}
+		\end{minipage}
+		\\
+	\end{tabular}
 	\caption{Simple Subclass}
 	\label{fig:class_ex1}
 \end{figure}
+
+\newpage
+In fig\ref{fig:class_ex2} is trying to change the last test case.
+The way to do this is to declare the name() method as virtual in the base to allow sub classes to override it.
+As before, the first two conditional checks have them returning their own proper names.
+The last conditional check has the subclass casted as a base class, but this time it still returns the name of the subclass.
+This shows how virtual functions can allow extensions to an object without changing code that uses the objects.
+
+\begin{figure}[!ht]
+	\centering
+	\begin{tabular}{c c}
+		\begin{minipage}[t]{0.45\textwidth}
+		\begin{minted}{c++}
+			class Base2 {
+			public:
+				virtual string name();
+			};
+			class Sub2 :public Base2 {
+			public:
+				string name();
+			};
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{minipage}[t]{0.5\textwidth}
+		\begin{minted}{c++}
+			TEST(ClassTest, t2) {
+				Base2 *a, *bb;
+				Sub2 *b;
+				a = new Base2;
+				b = new Sub2;
+
+				string name = a->name();
+				EXPECT_EQ(name, "Base2");
+
+				name = b->name();
+				EXPECT_EQ(name, "Sub2");
+
+				bb = (Base2*)b;
+				name = bb->name();
+				EXPECT_EQ(name, "Sub2");
+
+				delete a;
+				delete b;
+			}
+		\end{minted}
+		\end{minipage}
+		\\
+	\end{tabular}
+	\caption{Virtual Methods for Subclasses}
+	\label{fig:class_ex2}
+\end{figure}
+
+\newpage
+In fig\ref{fig:class_ex3} shows the last major topic in objects.
+A static variable is tangentially related to global variables, in that there is only one that everyone shares.
+When you declare a thing static in an object, it is going to be the single thing used for all objects of that type.
+Say you have a static int and you make 100 objects, all 100 objects would use the exact same int, and not their own copies of it.
+Same idea with inheriting a static method, it will be the only method that everyone uses with not even a chance to override it.
+That is why in this example the "Sub3" class does not even make it's own.
+It is forced to use the base class and not allowed to overwrite it.
+
+\begin{figure}[!ht]
+	\centering
+	\begin{tabular}{c c}
+		\begin{minipage}[t]{0.45\textwidth}
+		\begin{minted}{c++}
+			class Base3 {
+			public:
+				static string name();
+			};
+			class Sub3 :public Base3 {};
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{minipage}[t]{0.5\textwidth}
+		\begin{minted}{c++}
+			TEST(ClassTest, t3) {
+				Base3 *a;
+				Sub3 *b;
+				a = new Base3;
+				b = new Sub3;
+
+				string name = a->name();
+				EXPECT_EQ(name, "Global");
+
+				name = b->name();
+				EXPECT_EQ(name, "Global");
+
+				delete a;
+				delete b;
+			}
+		\end{minted}
+		\end{minipage}
+		\\
+	\end{tabular}
+	\caption{Static Methods for Subclasses}
+	\label{fig:class_ex3}
+\end{figure}
+
+\newpage
+\section{Abusing Memory Layout}
+And now the fun part I was doing before making the example classes above.
+I like sometimes just trying to take things too far while keeping them from breaking.
+This is a good way to make sure you understand what is really going on in the background.
+While I do these things here, it is me just having fun.
+They are all really terrible ideas and will eventually destroy your code if you do them.
+
+So, first was me making sure I can do things with structs that I had done before.
+Structs are great because they are just simple laied out containers of a certain number of bytes.
+This lets you abuse the memory layout on a system to do more stupid things than normal.
+In short you are able to pass one type of struct as if it were a different kind and things still work. 
+The first example shows two structs with the same layout but different names.
+That is easy to understand how it works, since really there is no difference between them.
+fig\ref{fig:bad_idea_1}
+
+\begin{figure}[!ht]
+	\centering
+	\begin{tabular}{c c}
+		\begin{minipage}[t]{0.25\textwidth}
+		\begin{minted}{c++}
+			struct S1 {
+				int a, b;
+			};
+			struct S2 {
+				int c, d;
+			};
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{minipage}[t]{0.6\textwidth}
+		\begin{minted}{c++}
+			TEST(BadPractice, castingStructs) {
+				struct S1 *s = new struct S1;
+				changeS1(s);
+				EXPECT_EQ(s->a, 100);
+				EXPECT_EQ(s->b, 50);
+				changeS2((struct S2*)s);
+				EXPECT_EQ(s->a, 4);
+				EXPECT_EQ(s->b, 5);
+				delete s;
+			}
+		\end{minted}
+		\end{minipage}
+		\\
+	\end{tabular}
+	\caption{Simple Struct Casting}
+	\label{fig:bad_idea_1}
+\end{figure}
+
+But this is where it bends your mind, a struct of a different form.
+The second struct is made out of more, smaller variables.
+Since we are familure with memory being a linear arrangment of bytes, we can think about how this could go.
+An int is by default 4 bytes, and an char is by default 1 byte.
+That means the first struct is 8 bytes long, while the second struct is 4 bytes long.
+So, if you can interpret the test, it does something as it casts the first struct to be of the second type.
+The function "changeUsingBytes" is a hint to it takes the number you pass in, breaks it into bytes, and then assigns the bytes to the char variables.
+Since the test passes, you can assume it works for setting the number to variable 'a' even though we cast it.
+fig\ref{fig:bad_idea_2}
+
+\begin{figure}[!ht]
+	\centering
+	\begin{tabular}{c c}
+		\begin{minipage}[t]{0.4\textwidth}
+		\begin{minted}{c++}
+			struct S1 {
+				int a, b;
+			};
+			struct S3 {
+				char first;
+				unsigned char second;
+				unsigned char third;
+				unsigned char fourth;
+			};
+		\end{minted}
+		\end{minipage}
+		&
+		\begin{minipage}[t]{0.72\textwidth}
+		\begin{minted}{c++}
+			TEST(BadPractice, castingStructsAgain) {
+				struct S1 *s = new struct S1;
+				changeS1(s);
+				EXPECT_EQ(s->a, 100);
+				EXPECT_EQ(s->b, 50);
+				changeUsingBytes((struct S3*)s,1234567);
+				EXPECT_EQ(s->a, 1234567);
+				EXPECT_EQ(s->b, 50);
+				changeUsingBytes((struct S3*)s, -1234567);
+				EXPECT_EQ(s->a, -1234567);
+				delete s;
+			}
+		\end{minted}
+		\end{minipage}
+		\\
+	\end{tabular}
+	\caption{Simple Struct Casting}
+	\label{fig:bad_idea_2}
+\end{figure}
+
+And the last thing to try out is doing similar things with classes.
+Structs are a easy to understand thing, just a number of bytes put in memory.
+Classes though, they have extra bits, like functions and such.
+I decided to test how far it could go before running into problems.
+The answer, about as far as structs in my basic testing.
+While I will not put a code excerpt here, I will give a quick list of what works.
+
+\begin{itemize}
+	\item Changing variable names
+	\item Changing function names
+	\item Adding more functions
+	\item Casting it as a smaller object (fewer bytes in it)
+\end{itemize}
+
+But the thing that did not work was casting as a larger object.
+The problem only is that it when it tries to access the bytes at the end of the object, well, they were never allocated for your smaller object.
+This lead to my code having the program either endlessly sitting idle or the debugger finding heap corruption and stopping it.
+
+\appendix
+\newpage
+\section{test.cpp - has the test cases in it}
+
+\begin{minted}{c++}
+#include "pch.h"
+#include <string>
+#include "../test_1/simple_functions.cpp"
+#include "../test_1/Objects.h"
+
+using std::string;
+
+TEST(TestCaseName, TestName) {
+  EXPECT_EQ(1, 1);
+  EXPECT_TRUE(true);
+}
+
+TEST(SimpleFunctions, voidOperation) {
+	TestFunction();
+}
+TEST(SimpleFunctions, simpleFive) {
+	ASSERT_EQ( hardCodedFive() ,5);
+}
+TEST(SimpleFunctions, simpleFive_fail) {
+	EXPECT_EQ(hardCodedFive(), 6);
+}
+
+//Abusing that structs always do memory layout the same way
+TEST(BadPractice, castingStructs) {
+	struct S1 *s = new struct S1;
+	changeS1(s);
+	EXPECT_EQ(s->a, 100);
+	EXPECT_EQ(s->b, 50);
+	changeS2((struct S2*)s);
+	EXPECT_EQ(s->a, 4);
+	EXPECT_EQ(s->b, 5);
+	delete s;
+}
+TEST(BadPractice, castingStructsAgain) {
+	struct S1 *s = new struct S1;
+	changeS1(s);
+	EXPECT_EQ(s->a, 100);
+	EXPECT_EQ(s->b, 50);
+	changeUsingBytes((struct S3*)s,1234567);
+	EXPECT_EQ(s->a, 1234567);
+	EXPECT_EQ(s->b, 50);
+	changeUsingBytes((struct S3*)s, -1234567);
+	EXPECT_EQ(s->a, -1234567);
+	delete s;
+}
+TEST(BadPractice, derefrencingLoacalVariables) {
+	int *a = returningLocalVariable();
+	EXPECT_NE(*a,5); // so this didn't work as i expected, so i changed the test to expect it to fail
+}
+TEST(BadPractice, castingClasses) {
+	//this works the same as the structs - if the sizes are the same, then everything works out just fine
+	Ex1 *a = new Ex1;
+	a->setValues();
+	EXPECT_EQ(a->a, 10);
+	EXPECT_EQ(a->b, 20);
+
+	((Ex2*)a)->setValues();
+	EXPECT_EQ(a->a, 30);
+	EXPECT_EQ(a->b, 40);
+
+	((Ex3*)a)->changeValuesToSomethingElse();
+	EXPECT_EQ(a->a, 50);
+	EXPECT_EQ(a->b, 60);
+
+	((Ex4*)a)->changeValuesToSomethingElse();
+	EXPECT_EQ(a->a, 70);
+	EXPECT_EQ(a->b, 80);
+
+	((Ex5*)a)->changeValuesToSomethingElse();
+	EXPECT_EQ(a->a, 90);
+	EXPECT_EQ(a->b,100);
+
+	((Ex6*)a)->changeValuesToSomethingElse();
+	EXPECT_EQ(a->a, 110);
+	EXPECT_EQ(a->b, 120);
+
+	//this access an entierly new variable that our object doesn't have
+	//this is bound to crash programs when data changes over page lines or something, and really drive people nuts
+	((Ex6*)a)->randomOtherFunction();
+	EXPECT_EQ(a->a, 700);
+	EXPECT_EQ(a->b, 800);
+
+	delete a;
+}
+
+//TEST(BadPractice, castingClasses_breaking) {
+//	Ex1 *a = new Ex1;
+//	Ex1 *b = new Ex1;
+
+	//this access an entierly new variable that our object doesn't have
+	//this time around, it seems to cause an infinate loop of some sort, and never finishes
+//	((Ex6*)a)->randomOtherFunction();
+//	EXPECT_EQ(a->a, 700);
+//	EXPECT_EQ(a->b, 800);
+//	EXPECT_EQ(b->a, 900);
+
+//	delete a;
+//	delete b;
+	//even telling it to cancel the test does nothing to stop it
+	//the cpu is being used 0% but the program never actually exits
+	//i have to kill it under task manager
+	//the only operational difference is that i have defined a second object b
+	//when a cast as something else does an erronious write to a third variable, it moves into territory it should not have
+//}
+
+TEST(ClassTest,t1){
+	Base1 *a, *bb;
+	Sub1 *b;
+	a = new Base1;
+	b = new Sub1;
+
+	string name = a->name();
+	EXPECT_EQ(name, "Base1");
+
+	name = b->name();
+	EXPECT_EQ(name, "Sub1");
+
+	bb = (Base1*)b;
+	name = bb->name();
+	EXPECT_EQ(name, "Base1");
+
+	delete a;
+	delete b;
+}
+
+TEST(ClassTest, t2) {
+	Base2 *a, *bb;
+	Sub2 *b;
+	a = new Base2;
+	b = new Sub2;
+
+	string name = a->name();
+	EXPECT_EQ(name, "Base2");
+
+	name = b->name();
+	EXPECT_EQ(name, "Sub2");
+
+	bb = (Base2*)b;
+	name = bb->name();
+	EXPECT_EQ(name, "Sub2");
+
+	delete a;
+	delete b;
+}
+
+TEST(ClassTest, t3) {
+	Base3 *a;
+	Sub3 *b;
+	a = new Base3;
+	b = new Sub3;
+
+	string name = a->name();
+	EXPECT_EQ(name, "Global");
+
+	name = b->name();
+	EXPECT_EQ(name, "Global");
+
+	delete a;
+	delete b;
+}
+\end{minted}
+
+\newpage
+\section{simple\_functions.cpp - some silly things I was testing on}
+
+\begin{minted}{c++}
+#pragma once
+#include "stdafx.h"
+
+void TestFunction() {
+	//does nothing
+}
+
+int hardCodedFive() {
+	return 5;
+}
+
+struct S1 {
+	int a, b;
+};
+struct S2 {
+	int c, d;
+};
+void changeS1(struct S1 *s) {
+	s->a = 100;
+	s->b = 50;
+}
+void changeS2(struct S2 *s) {
+	s->c = 4;
+	s->d = 5;
+}
+
+struct S3 {
+	char first;
+	unsigned char second;
+	unsigned char third;
+	unsigned char fourth;
+};
+void changeUsingBytes(struct S3 *s, int val) {
+	s->first = (val >> 0 * 8) & 0xFF;
+	s->second = (val >> 1 * 8) & 0xFF;
+	s->third = (val >> 2 * 8) & 0xFF;
+	s->fourth = (val >> 3 * 8) & 0xFF;
+}
+
+int* returningLocalVariable() {
+	int a = 5;
+	return &a;
+}
+
+
+class Ex1 {
+public:
+	int a;
+	int b;
+	void setValues() { a = 10, b = 20; }
+};
+class Ex2 {
+public:
+	int c;
+	int d;
+	void setValues() { c = 30, d = 40; }
+};
+class Ex3 {
+public:
+	int e;
+	int f;
+	void changeValuesToSomethingElse() { e = 50, f = 60; }
+};
+class Ex4 {
+public:
+	int g;
+	int h;
+	void changeValuesToSomethingElse() { g = 70, h = 80; }
+	void randomOtherFunction() { g = 700, h = 800; };
+};
+class Ex5 {
+public:
+	int g;
+	int h;
+	void randomOtherFunction() { g = 700, h = 800; };
+	void changeValuesToSomethingElse() { g = 90, h = 100; }
+};
+class Ex6 {
+public:
+	int g;
+	int h;
+	int q;
+	void randomOtherFunction() { g = 700, h = 800, q=900; };
+	void changeValuesToSomethingElse() { g = 110, h = 120; }
+};
+\end{minted}
+
+\newpage
+\section{Objects.h}
+
+\begin{minted}{c++}
+#pragma once
+#include "stdafx.h"
+
+using std::string;
+
+class Base1 {
+public:
+	string name();
+};
+class Sub1:public Base1 {
+public:
+	string name();
+};
+
+class Base2 {
+public:
+	virtual string name();
+};
+class Sub2 :public Base2 {
+public:
+	string name();
+};
+
+class Base3 {
+public:
+	static string name();
+};
+class Sub3 :public Base3 {};
+
+class SummaryClass {
+public:
+	SummaryClass() {}
+	virtual ~SummaryClass() {}
+
+	void onlyLocallyOverridable() {}
+	virtual void overridenIfASubclassWants() {}
+	virtual void forcedToOverrideThis() = 0;
+
+	static void globalToAllObjectThatInherit() {}
+};
+\end{minted}
+
+\newpage
+\section{Objects.cpp}
+
+\begin{minted}{c++}
+#include "stdafx.h"
+#include "Objects.h"
+
+string Base1::name() {
+	return "Base1";
+}
+string Sub1::name() {
+	return "Sub1";
+}
+
+string Base2::name() {
+	return "Base2";
+}
+string Sub2::name() {
+	return "Sub2";
+}
+string Base3::name() {
+	return "Global";
+}
+\end{minted}
 
 \end{document}

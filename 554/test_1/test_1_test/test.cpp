@@ -45,7 +45,7 @@ TEST(BadPractice, castingStructsAgain) {
 }
 TEST(BadPractice, derefrencingLoacalVariables) {
 	int *a = returningLocalVariable();
-	EXPECT_NE(*a,5);
+	EXPECT_NE(*a,5); // so this didn't work as i expected, so i changed the test to expect it to fail
 }
 TEST(BadPractice, castingClasses) {
 	//this works the same as the structs - if the sizes are the same, then everything works out just fine
@@ -117,7 +117,7 @@ TEST(ClassTest,t1){
 
 	bb = (Base1*)b;
 	name = bb->name();
-	EXPECT_EQ(name, "Sub1");
+	EXPECT_EQ(name, "Base1");
 
 	delete a;
 	delete b;
