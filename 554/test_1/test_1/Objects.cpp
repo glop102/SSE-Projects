@@ -1,12 +1,19 @@
 #include "stdafx.h"
 #include "Objects.h"
 
-
-EvilClass::EvilClass()
-{
+string Base1::name() {
+	return "Base1";
+}
+string Sub1::name() {
+	return "Sub1";
 }
 
-
-EvilClass::~EvilClass()
-{
+string Base2::name() {
+	return "Base2";
+}
+string Sub2::name() {
+	return "Sub2";
+}
+string Base3::name() {
+	return "Global";
 }
