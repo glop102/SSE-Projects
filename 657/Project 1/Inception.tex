@@ -1,0 +1,128 @@
+\documentclass[12pt]{article}
+
+\usepackage{caption} %interesting things with captions
+\usepackage[margin=1.5in]{geometry} %mostly set margin of the report
+\usepackage{tabulary} %text wrapping in tables
+\usepackage{subcaption} %let me put multiple images into a single caption
+\usepackage{textcomp} %let me use \textrangle{} to get '>'
+\usepackage{hyperref} %links in ToC - should be mostly the last thing imported?
+
+%images being embeded
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+
+%code highlighting
+\usepackage{minted}
+\setminted[c++]{frame=single,linenos=true,autogobble=true,numbersep=4pt,tabsize=4}
+\setminted[bash]{frame=single,linenos=true,autogobble=true,numbersep=4pt,tabsize=4}
+\setminted[xml]{frame=single,linenos=true,autogobble=true,numbersep=4pt,tabsize=4}
+
+%fix a quote mark issue
+\usepackage [english]{babel}
+\usepackage [autostyle, english = american]{csquotes}
+\MakeOuterQuote{"}
+
+%page 50
+\begin{document}
+\pagenumbering{gobble}
+\begin{titlepage}
+	\centering
+	{\Huge Inception\par}
+	\vspace{0.25in}
+	{\Large Reddit Robot\par}
+	\vspace{2in}
+	{Alex Harper\par}
+	\newpage
+\end{titlepage}
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+
+\section{General Concept}
+
+This software will be a "bot" that autonomously does action on the wesite \href{http://reddit.com}{reddit.com}.
+The bot can have several goals that at regular intervals will attempt to do on the wesite.
+The bot should also be extensible for adding new goals in the future.
+The bot should also try to enforce the rules of the site to try preventing it from getting banned.
+
+The current main concept for what it will do is; get mentioned by a user, the bot will try to find a link to an image, and then modify the image before reposting it.
+The main concept is mostly to be an example and guide for creating the framework for interacting with reddit.
+
+\section{Use Cases}
+
+\begin{itemize}
+\item (substep) Authenticate as a User.
+Be able to do the appropriate steps to get tokens from the servers.
+This includes first time access and session token refresh.
+
+\item Read Data.
+Read items about the user.
+Most important being direct messages and replys to posts.
+
+\item Post Content.
+Often this will be in response to another user.
+This will use the credentials of its own user to post.
+
+\item Download Images.
+Read a post to look for links to an image or gallerly of images.
+This often will be either a direct link or link to imgur.
+
+\item Upload Images.
+Use an external hosting service to post the pictures.
+This is likely to be the free service imgur.
+\end{itemize}
+
+\section{Supplementary Specification}
+
+\begin{itemize}
+	\item JSON is used for all responses and replies
+	\item C++ language
+	\item Extensible structure to allow expanded functionality past the basics
+	\item Preferably able to move the API wrapper to other projects (portable wrapper)
+	\item Store the tokens on disk to allow the program to be started and run without re-authenticating
+	\item Follow the basic rules for using the API
+	\begin{itemize}
+		\item Limit request rate to be reasonable
+		\item User Agent string must be set and unique to identify the bot on the servers
+		\item Use the new OAuth system and not the old direct json system
+	\end{itemize}
+\end{itemize}
+
+\section{Proof of Concept}
+
+A simple program of the most basic nature was put together to do the first steps of authenticating a user.
+This was to show that the Qt framework objects were going to work just fine.
+This included setting the headers on the request and getting a response back from the server.
+The code did not do all the steps needed to finish authenticating as it was seen that it would work at this point.
+
+A second program was put together to test the way Qt handles JSON.
+The objects used for this are sufficent for our goals.
+While the code didn't do anything reactive, it was practice at using the objects to see how it reacts to JSON.
+
+\section{Iteration Plan}
+
+Since there is only a single person working on this project, the goals will be simple
+Authenticating a user, storing the tokens for subsequent uses, and reading data should fill all the time.
+This may need to be reduced in scope as it is a new field of effort for me.
+
+\section{Glossary}
+
+API - Application Interface to allow external software to interact
+
+bot - autonomously running software whose goal is to interact with a different system
+
+imgur - website that hosts iamges on the internet for free. often used on reddit
+
+JSON - JavaScript Object Notation, a standardized way to transport data
+
+OAuth - an authentication scheme that has a user ok an application, the application gets tokens to use to authenticate, and the user can revoke the tokens at any time
+
+Qt - Framework being used that includes many pre-built tools
+
+reddit - website that hosts user posts and discussions - a place to share and sort links
+
+sub-reddit - a sub-section of the reddit website that is supposed to be dedicated to a single topic (eg fluffy\_puppies)
+
+User Agent - a field in the header of an http request to identify what type of system is making the request
+
+\end{document}

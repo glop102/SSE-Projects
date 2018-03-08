@@ -1,0 +1,4 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{n}{parseJson}\PYG{p}{(}\PYG{n}{top}\PYG{p}{.}\PYG{n}{array}\PYG{p}{()[}\PYG{l+m+mi}{0}\PYG{p}{].}\PYG{n}{toObject}\PYG{p}{()[}\PYG{l+s}{\PYGZdq{}data\PYGZdq{}}\PYG{p}{].}\PYG{n}{toObject}\PYG{p}{()[}\PYG{l+s}{\PYGZdq{}children\PYGZdq{}}\PYG{p}{]}
+	\PYG{p}{.}\PYG{n}{toArray}\PYG{p}{()[}\PYG{l+m+mi}{0}\PYG{p}{].}\PYG{n}{toObject}\PYG{p}{()[}\PYG{l+s}{\PYGZdq{}data\PYGZdq{}}\PYG{p}{].}\PYG{n}{toObject}\PYG{p}{());}
+\end{Verbatim}
